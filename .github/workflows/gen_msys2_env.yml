@@ -1,0 +1,61 @@
+# on:
+#   push:
+#     branches: '*'
+#   schedule:
+#     - cron: '0 0 * * *'
+name: Generate MSYS2 Environment
+on: push
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    env:
+      BUILD_TAG:
+    steps:
+    - name: Define Build Tag
+      shell: python
+      run: |
+        from datetime import datetime
+        print('::set-env name=BUILD_TAG::v' + datetime.now().strftime('%y%m%d%H%M%S'))
+    - name: Install MSYS2 & Dependencies
+      run: |
+        choco install msys2
+        C:\tools\msys64\usr\bin\bash.exe -lc "pacman --needed --noconfirm -S \
+        ccache \
+        git \
+        make \
+        mingw-w64-x86_64-gcc \
+        mingw-w64-x86_64-glib2 \
+        mingw-w64-x86_64-libepoxy \
+        mingw-w64-x86_64-libtool \
+        mingw-w64-x86_64-pixman \
+        mingw-w64-x86_64-pkg-config \
+        mingw-w64-x86_64-SDL2 \
+        python3 \
+        "
+        C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Scc --noconfirm"
+    - name: Compress MSYS2 Environment
+      run: 7z a -bd msys64.7z C:\tools\msys64\
+    - name: Create Release
+      if: github.event_name == 'push'
+      id: create_release
+      uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ env.BUILD_TAG }}
+        release_name: ${{ env.BUILD_TAG }}
+        draft: false
+        prerelease: false
+    - name: Upload Release Assets
+      if: github.event_name == 'push'
+      id: upload-release-asset 
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        asset_path: msys64.7z
+        asset_name: msys64.7z
+        asset_content_type: application/zip
