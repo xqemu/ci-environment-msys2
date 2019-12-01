@@ -20,7 +20,7 @@ jobs:
         print('::set-env name=BUILD_TAG::v' + datetime.now().strftime('%y%m%d%H%M%S'))
     - name: Install MSYS2 & Dependencies
       run: |
-        choco install msys2
+        choco install msys2 --no-progress
         C:\tools\msys64\usr\bin\bash.exe -lc "pacman --needed --noconfirm -S \
         ccache \
         git \
